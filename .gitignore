@@ -1,0 +1,6 @@
+# Go build and test artifacts
+/bin/
+*.test
+*.out
+# Local AI runtime state
+.atl/
