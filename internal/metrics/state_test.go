@@ -1,6 +1,9 @@
 package metrics
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestHistoryUsesFixedCapacityRing(t *testing.T) {
 	history := newHistory[int](3)
@@ -74,6 +77,32 @@ func TestStateAcceptCPUWarmupValidationAndRecovery(t *testing.T) {
 			got := state.Accept(RawSample{CPU: tt.cpu, Memory: mem, Load: Load{One: 1, Five: 2, Fifteen: 3}})
 			if got.CPU.Status != tt.want || got.CPU.Value != tt.wantPercent {
 				t.Fatalf("CPU = %#v, want %s/%v", got.CPU, tt.want, tt.wantPercent)
+			}
+		})
+	}
+}
+
+func TestStateAcceptValidatesRawLoad(t *testing.T) {
+	tests := []struct {
+		name       string
+		load       Load
+		wantStatus Status
+	}{
+		{"negative one-minute load is unavailable", Load{One: -1, Five: 2, Fifteen: 3}, Unavailable},
+		{"NaN five-minute load is unavailable", Load{One: 1, Five: math.NaN(), Fifteen: 3}, Unavailable},
+		{"positive infinite fifteen-minute load is unavailable", Load{One: 1, Five: 2, Fifteen: math.Inf(1)}, Unavailable},
+		{"negative infinite one-minute load is unavailable", Load{One: math.Inf(-1), Five: 2, Fifteen: 3}, Unavailable},
+		{"finite nonnegative load remains available", Load{One: 1, Five: 2, Fifteen: 3}, Available},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewState(1).Accept(RawSample{Load: tt.load})
+			if got.Load.Status != tt.wantStatus {
+				t.Fatalf("load status = %s, want %s", got.Load.Status, tt.wantStatus)
+			}
+			if tt.wantStatus == Available && got.Load.Value != tt.load {
+				t.Fatalf("load = %#v, want %#v", got.Load.Value, tt.load)
 			}
 		})
 	}

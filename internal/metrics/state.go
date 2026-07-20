@@ -1,5 +1,7 @@
 package metrics
 
+import "math"
+
 type State struct {
 	previous    CPUCounters
 	hasPrevious bool
@@ -18,7 +20,7 @@ func NewState(capacity int) *State {
 func (s *State) Accept(raw RawSample) Snapshot {
 	s.snapshot.CPU = s.acceptCPU(raw.CPU)
 	s.snapshot.Memory = memoryValue(raw.Memory)
-	s.snapshot.Load = Value[Load]{Status: Available, Value: raw.Load}
+	s.snapshot.Load = loadValue(raw.Load)
 	if s.snapshot.CPU.Status == Available {
 		s.cpu.add(s.snapshot.CPU.Value)
 	}
@@ -56,6 +58,15 @@ func memoryValue(memory Memory) Value[MemoryUsage] {
 		return Value[MemoryUsage]{Status: Unavailable}
 	}
 	return Value[MemoryUsage]{Status: Available, Value: MemoryUsage{memory.Total - memory.Available, memory.Available, memory.Total, memory.SwapTotal - memory.SwapFree, memory.SwapTotal}}
+}
+
+func loadValue(load Load) Value[Load] {
+	for _, value := range []float64{load.One, load.Five, load.Fifteen} {
+		if value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+			return Value[Load]{Status: Unavailable}
+		}
+	}
+	return Value[Load]{Status: Available, Value: load}
 }
 
 func (s *State) Snapshot() Snapshot      { return s.snapshot }
