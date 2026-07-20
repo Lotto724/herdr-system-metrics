@@ -28,6 +28,9 @@ func ParseLoadAvg(r io.Reader) (Load, error) {
 		if math.IsNaN(values[i]) || math.IsInf(values[i], 0) {
 			return Load{}, fmt.Errorf("load %d: must be finite", i)
 		}
+		if values[i] < 0 {
+			return Load{}, fmt.Errorf("load %d: must be non-negative", i)
+		}
 	}
 	return Load{values[0], values[1], values[2]}, nil
 }
