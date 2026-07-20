@@ -36,14 +36,6 @@ func (r Reader) ReadMemInfo() (Memory, error) {
 	return ParseMemInfo(bytes.NewReader(b))
 }
 
-func (r Reader) ReadLoadAvg() (Load, error) {
-	b, err := r.read("loadavg")
-	if err != nil {
-		return Load{}, err
-	}
-	return ParseLoadAvg(bytes.NewReader(b))
-}
-
 func (r Reader) Read(ctx context.Context) (metrics.RawSample, error) {
 	if err := ctx.Err(); err != nil {
 		return metrics.RawSample{}, err
@@ -56,14 +48,9 @@ func (r Reader) Read(ctx context.Context) (metrics.RawSample, error) {
 	if err != nil {
 		return metrics.RawSample{}, err
 	}
-	load, err := r.ReadLoadAvg()
-	if err != nil {
-		return metrics.RawSample{}, err
-	}
 	return metrics.RawSample{
 		CPU:    metrics.CPUCounters{Total: cpu.Total, Busy: cpu.Busy},
 		Memory: metrics.Memory{Total: memory.Total, Available: memory.Available, SwapTotal: memory.SwapTotal, SwapFree: memory.SwapFree},
-		Load:   metrics.Load{One: load.One, Five: load.Five, Fifteen: load.Fifteen},
 	}, nil
 }
 

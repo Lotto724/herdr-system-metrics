@@ -1,7 +1,5 @@
 package metrics
 
-import "math"
-
 type State struct {
 	previous    CPUCounters
 	hasPrevious bool
@@ -20,7 +18,6 @@ func NewState(capacity int) *State {
 func (s *State) Accept(raw RawSample) Snapshot {
 	s.snapshot.CPU = s.acceptCPU(raw.CPU)
 	s.snapshot.Memory = memoryValue(raw.Memory)
-	s.snapshot.Load = loadValue(raw.Load)
 	if s.snapshot.CPU.Status == Available {
 		s.cpu.add(s.snapshot.CPU.Value)
 	}
@@ -60,19 +57,9 @@ func memoryValue(memory Memory) Value[MemoryUsage] {
 	return Value[MemoryUsage]{Status: Available, Value: MemoryUsage{memory.Total - memory.Available, memory.Available, memory.Total, memory.SwapTotal - memory.SwapFree, memory.SwapTotal}}
 }
 
-func loadValue(load Load) Value[Load] {
-	for _, value := range []float64{load.One, load.Five, load.Fifteen} {
-		if value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
-			return Value[Load]{Status: Unavailable}
-		}
-	}
-	return Value[Load]{Status: Available, Value: load}
-}
-
 func (s *State) Snapshot() Snapshot      { return s.snapshot }
 func (s *State) CPUHistory() []float64   { return s.cpu.all() }
 func (s *State) MemoryHistory() []uint64 { return s.memory.all() }
-func (s *State) ResetHistory()           { s.cpu.reset(); s.memory.reset() }
 func (s *State) InvalidateCPUBaseline()  { s.hasPrevious = false }
 
 func (s *State) MarkUnavailable() Snapshot {
