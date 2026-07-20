@@ -4,3 +4,4 @@
 *.out
 # Local AI runtime state
 .atl/
+/.codegraph/
