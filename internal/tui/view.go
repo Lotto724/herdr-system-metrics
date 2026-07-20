@@ -60,7 +60,7 @@ func renderView(model Model) string {
 	if model.err != nil {
 		lines = append(lines, "Error: "+model.err.Error())
 	}
-	lines = append(lines, "[space] pause/resume  [r] reset  [q] quit")
+	lines = append(lines, "[space] pause/resume [r] reset [q] quit")
 	return strings.Join(lines, "\n") + "\n"
 }
 

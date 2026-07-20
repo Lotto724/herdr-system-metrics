@@ -54,6 +54,20 @@ func TestModelUpdateResizeRecomputesView(t *testing.T) {
 	}
 }
 
+func TestCompactViewLinesFitTerminalWidth(t *testing.T) {
+	for _, width := range []int{40, 64} {
+		t.Run(fmt.Sprintf("%d columns", width), func(t *testing.T) {
+			model := viewModel()
+			updated, _ := model.Update(tea.WindowSizeMsg{Width: width, Height: 12})
+			for _, line := range strings.Split(strings.TrimSuffix(updated.(Model).View(), "\n"), "\n") {
+				if len(line) > width {
+					t.Fatalf("compact line %q has width %d, want at most %d", line, len(line), width)
+				}
+			}
+		})
+	}
+}
+
 func TestViewUsesVisibleHistoryTailAndIsDeterministic(t *testing.T) {
 	values := []float64{1, 2, 3, 4, 5}
 	if got := visibleTail(values, 3); fmt.Sprint(got) != "[3 4 5]" {
