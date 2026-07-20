@@ -145,3 +145,20 @@ func TestStateInvalidatesBaselineAndResetsOnlyHistory(t *testing.T) {
 		t.Fatalf("reset changed current state: %#v", got.Memory)
 	}
 }
+
+func TestStateMarksCurrentMetricsUnavailableAndRecovers(t *testing.T) {
+	state := NewState(2)
+	state.Accept(RawSample{CPU: CPUCounters{Total: 100, Busy: 20}, Memory: Memory{Total: 100, Available: 50}})
+	state.Accept(RawSample{CPU: CPUCounters{Total: 200, Busy: 60}, Memory: Memory{Total: 100, Available: 40}})
+
+	got := state.MarkUnavailable()
+	if got.CPU.Status != Unavailable || got.Memory.Status != Unavailable {
+		t.Fatalf("unavailable snapshot = %#v, want CPU and memory unavailable", got)
+	}
+	if got := state.Accept(RawSample{CPU: CPUCounters{Total: 300, Busy: 100}, Memory: Memory{Total: 100, Available: 30}}); got.CPU.Status != WarmingUp || got.Memory.Status != Available {
+		t.Fatalf("first recovered snapshot = %#v, want CPU warming up and memory available", got)
+	}
+	if got := state.Accept(RawSample{CPU: CPUCounters{Total: 400, Busy: 160}, Memory: Memory{Total: 100, Available: 20}}); got.CPU.Status != Available || got.CPU.Value != 60 || got.Memory.Status != Available {
+		t.Fatalf("second recovered snapshot = %#v, want CPU and memory available", got)
+	}
+}

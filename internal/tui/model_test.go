@@ -67,7 +67,7 @@ func TestModelUpdatePauseDiscardsGenerationAndResumeWarmsCPU(t *testing.T) {
 	}
 }
 
-func TestModelUpdateResetClearsOnlyHistory(t *testing.T) {
+func TestModelUpdateIgnoresResetKey(t *testing.T) {
 	model := NewModel(sourceStub{}, metrics.NewState(2))
 	for _, raw := range []metrics.RawSample{sample(100, 20), sample(200, 60)} {
 		updated, _ := model.Update(sampleMsg{raw: raw})
@@ -75,8 +75,8 @@ func TestModelUpdateResetClearsOnlyHistory(t *testing.T) {
 	}
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	model = updated.(Model)
-	if len(model.state.CPUHistory()) != 0 || model.snapshot.Memory.Status != metrics.Available {
-		t.Fatalf("reset history=%v snapshot=%#v", model.state.CPUHistory(), model.snapshot)
+	if len(model.state.CPUHistory()) != 1 || model.snapshot.Memory.Status != metrics.Available {
+		t.Fatalf("reset key changed history=%v snapshot=%#v", model.state.CPUHistory(), model.snapshot)
 	}
 }
 
@@ -89,17 +89,26 @@ func TestModelUpdateQuitsForExitKeys(t *testing.T) {
 	}
 }
 
-func TestModelUpdateRecoversAfterSampleError(t *testing.T) {
+func TestModelUpdateMarksMetricsUnavailableAfterSampleErrorAndRecovers(t *testing.T) {
 	model := NewModel(sourceStub{}, metrics.NewState(1))
+	for _, raw := range []metrics.RawSample{sample(100, 20), sample(200, 60)} {
+		updated, _ := model.Update(sampleMsg{raw: raw})
+		model = updated.(Model)
+	}
 	updated, _ := model.Update(sampleMsg{err: errors.New("proc read failed")})
 	model = updated.(Model)
-	if model.err == nil {
-		t.Fatal("sample error was not retained")
+	if model.err == nil || model.snapshot.CPU.Status != metrics.Unavailable || model.snapshot.Memory.Status != metrics.Unavailable {
+		t.Fatalf("sample error = %v snapshot=%#v, want retained error and unavailable metrics", model.err, model.snapshot)
 	}
 	updated, _ = model.Update(sampleMsg{raw: sample(100, 20)})
 	model = updated.(Model)
-	if model.err != nil || model.snapshot.Memory.Status != metrics.Available {
-		t.Fatalf("recovery error=%v snapshot=%#v", model.err, model.snapshot)
+	if model.err != nil || model.snapshot.CPU.Status != metrics.WarmingUp || model.snapshot.Memory.Status != metrics.Available {
+		t.Fatalf("first recovery error=%v snapshot=%#v", model.err, model.snapshot)
+	}
+	updated, _ = model.Update(sampleMsg{raw: sample(200, 60)})
+	model = updated.(Model)
+	if model.snapshot.CPU.Status != metrics.Available || model.snapshot.CPU.Value != 40 || model.snapshot.Memory.Status != metrics.Available {
+		t.Fatalf("second recovery snapshot=%#v", model.snapshot)
 	}
 }
 

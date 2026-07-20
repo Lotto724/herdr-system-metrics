@@ -74,3 +74,10 @@ func (s *State) CPUHistory() []float64   { return s.cpu.all() }
 func (s *State) MemoryHistory() []uint64 { return s.memory.all() }
 func (s *State) ResetHistory()           { s.cpu.reset(); s.memory.reset() }
 func (s *State) InvalidateCPUBaseline()  { s.hasPrevious = false }
+
+func (s *State) MarkUnavailable() Snapshot {
+	s.snapshot.CPU = Value[float64]{Status: Unavailable}
+	s.snapshot.Memory = Value[MemoryUsage]{Status: Unavailable}
+	s.InvalidateCPUBaseline()
+	return s.snapshot
+}
