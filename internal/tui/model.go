@@ -25,6 +25,8 @@ type Model struct {
 	reading    bool
 	generation uint64
 	err        error
+	width      int
+	height     int
 }
 
 func NewModel(source metrics.Source, state *metrics.State) Model {
@@ -71,11 +73,13 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.err = nil
 		m.snapshot = m.state.Accept(message.raw)
+	case tea.WindowSizeMsg:
+		m.width, m.height = message.Width, message.Height
 	}
 	return m, nil
 }
 
-func (m Model) View() string { return "" }
+func (m Model) View() string { return renderView(m) }
 
 func (m Model) tick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return tickMsg{} })
