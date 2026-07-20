@@ -1,9 +1,6 @@
 package metrics
 
-import (
-	"math"
-	"testing"
-)
+import "testing"
 
 func TestHistoryUsesFixedCapacityRing(t *testing.T) {
 	history := newHistory[int](3)
@@ -12,7 +9,7 @@ func TestHistoryUsesFixedCapacityRing(t *testing.T) {
 	}
 }
 
-func TestHistoryWraparoundOrderingZeroCapacityAndReset(t *testing.T) {
+func TestHistoryWraparoundOrderingAndZeroCapacity(t *testing.T) {
 	t.Run("wraparound retains newest values in order", func(t *testing.T) {
 		history := newHistory[int](3)
 		for _, value := range []int{1, 2, 3, 4, 5} {
@@ -20,17 +17,6 @@ func TestHistoryWraparoundOrderingZeroCapacityAndReset(t *testing.T) {
 		}
 		if got, want := history.all(), []int{3, 4, 5}; !equalInts(got, want) {
 			t.Fatalf("history = %v, want %v", got, want)
-		}
-		history.reset()
-		if got := history.all(); len(got) != 0 {
-			t.Fatalf("history after reset = %v, want empty", got)
-		}
-		if len(history.values) != 3 || cap(history.values) != 3 {
-			t.Fatalf("ring backing after reset = len %d cap %d, want len/cap 3", len(history.values), cap(history.values))
-		}
-		history.add(6)
-		if got, want := history.all(), []int{6}; !equalInts(got, want) {
-			t.Fatalf("history after reset = %v, want %v", got, want)
 		}
 	})
 
@@ -74,35 +60,9 @@ func TestStateAcceptCPUWarmupValidationAndRecovery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := state.Accept(RawSample{CPU: tt.cpu, Memory: mem, Load: Load{One: 1, Five: 2, Fifteen: 3}})
+			got := state.Accept(RawSample{CPU: tt.cpu, Memory: mem})
 			if got.CPU.Status != tt.want || got.CPU.Value != tt.wantPercent {
 				t.Fatalf("CPU = %#v, want %s/%v", got.CPU, tt.want, tt.wantPercent)
-			}
-		})
-	}
-}
-
-func TestStateAcceptValidatesRawLoad(t *testing.T) {
-	tests := []struct {
-		name       string
-		load       Load
-		wantStatus Status
-	}{
-		{"negative one-minute load is unavailable", Load{One: -1, Five: 2, Fifteen: 3}, Unavailable},
-		{"NaN five-minute load is unavailable", Load{One: 1, Five: math.NaN(), Fifteen: 3}, Unavailable},
-		{"positive infinite fifteen-minute load is unavailable", Load{One: 1, Five: 2, Fifteen: math.Inf(1)}, Unavailable},
-		{"negative infinite one-minute load is unavailable", Load{One: math.Inf(-1), Five: 2, Fifteen: 3}, Unavailable},
-		{"finite nonnegative load remains available", Load{One: 1, Five: 2, Fifteen: 3}, Available},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NewState(1).Accept(RawSample{Load: tt.load})
-			if got.Load.Status != tt.wantStatus {
-				t.Fatalf("load status = %s, want %s", got.Load.Status, tt.wantStatus)
-			}
-			if tt.wantStatus == Available && got.Load.Value != tt.load {
-				t.Fatalf("load = %#v, want %#v", got.Load.Value, tt.load)
 			}
 		})
 	}
@@ -129,7 +89,7 @@ func TestStateUsesMemoryAvailableAndBoundsHistory(t *testing.T) {
 	}
 }
 
-func TestStateInvalidatesBaselineAndResetsOnlyHistory(t *testing.T) {
+func TestStateInvalidatesBaseline(t *testing.T) {
 	state := NewState(2)
 	state.Accept(RawSample{CPU: CPUCounters{Total: 100, Busy: 20}, Memory: Memory{Total: 100, Available: 50}})
 	state.Accept(RawSample{CPU: CPUCounters{Total: 200, Busy: 60}, Memory: Memory{Total: 100, Available: 40}})
@@ -137,12 +97,8 @@ func TestStateInvalidatesBaselineAndResetsOnlyHistory(t *testing.T) {
 	if got := state.Accept(RawSample{CPU: CPUCounters{Total: 300, Busy: 100}, Memory: Memory{Total: 100, Available: 30}}); got.CPU.Status != WarmingUp {
 		t.Fatalf("resumed CPU = %#v, want warming up", got.CPU)
 	}
-	state.ResetHistory()
-	if len(state.CPUHistory()) != 0 || len(state.MemoryHistory()) != 0 {
-		t.Fatalf("history was not reset")
-	}
 	if got := state.Snapshot(); got.Memory.Status != Available || got.Memory.Value.Used != 70 {
-		t.Fatalf("reset changed current state: %#v", got.Memory)
+		t.Fatalf("baseline invalidation changed current state: %#v", got.Memory)
 	}
 }
 

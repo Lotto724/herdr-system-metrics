@@ -26,8 +26,6 @@ func (h *history[T]) add(value T) {
 	h.count++
 }
 
-func (h *history[T]) reset() { h.start, h.count = 0, 0 }
-
 func (h history[T]) all() []T {
 	values := make([]T, h.count)
 	for i := range values {

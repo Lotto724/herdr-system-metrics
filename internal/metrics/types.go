@@ -17,17 +17,14 @@ type (
 	}
 	CPUCounters struct{ Total, Busy uint64 }
 	Memory      struct{ Total, Available, SwapTotal, SwapFree uint64 }
-	Load        struct{ One, Five, Fifteen float64 }
 	RawSample   struct {
 		CPU    CPUCounters
 		Memory Memory
-		Load   Load
 	}
 	MemoryUsage struct{ Used, Available, Total, SwapUsed, SwapTotal uint64 }
 	Snapshot    struct {
 		CPU    Value[float64]
 		Memory Value[MemoryUsage]
-		Load   Value[Load]
 	}
 )
 
