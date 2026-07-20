@@ -49,8 +49,6 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				return m, m.tick()
 			}
-		case "r":
-			m.state.ResetHistory()
 		}
 	case tickMsg:
 		if m.paused {
@@ -69,6 +67,7 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if message.err != nil {
 			m.err = message.err
+			m.snapshot = m.state.MarkUnavailable()
 			return m, nil
 		}
 		m.err = nil
