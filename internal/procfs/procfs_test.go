@@ -75,6 +75,9 @@ func TestParseLoadAvg(t *testing.T) {
 		{"NaN window is unavailable", "NaN 1.25 2.75\n", Load{}, true},
 		{"positive infinity window is unavailable", "0.50 +Inf 2.75\n", Load{}, true},
 		{"negative infinity window is unavailable", "0.50 1.25 -Inf\n", Load{}, true},
+		{"negative one-minute window is unavailable", "-0.50 1.25 2.75\n", Load{}, true},
+		{"negative five-minute window is unavailable", "0.50 -1.25 2.75\n", Load{}, true},
+		{"negative fifteen-minute window is unavailable", "0.50 1.25 -2.75\n", Load{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
