@@ -1,0 +1,15 @@
+id = "herdr.system-metrics"
+name = "System Metrics"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Linux/WSL best-effort CPU, RAM, and swap popup"
+platforms = ["linux"]
+
+[[build]]
+command = ["go", "build", "-o", "bin/herdr-system-metrics", "./cmd/herdr-system-metrics"]
+
+[[panes]]
+id = "system-metrics"
+title = "System Metrics"
+placement = "popup"
+command = ["./bin/herdr-system-metrics"]
